@@ -53,13 +53,13 @@
               <div class="top-right clearfix">
                 <ul class="top-info clearfix">
                   <li>
-                    <a href="tel:+91 1234567890"
-                      ><i class="icon far fa-phone"></i> +91 1234567890</a
+                    <a href="tel:+91 8669455156"
+                      ><i class="icon far fa-phone"></i> +91 8669455156</a
                     >
                   </li>
                   <li>
-                    <a href="mailto:dummy@example.com"
-                      ><i class="icon far fa-envelope"></i> dummy@example.com</a
+                    <a href="mailto:vyankateshwaracafe@gmail.com"
+                      ><i class="icon far fa-envelope"></i> vyankateshwaracafe@gmail.com</a
                     >
                   </li>
                 </ul>
@@ -157,13 +157,13 @@
               444602
             </li>
             <li>Daily : 07.00 am to 10.00 pm</li>
-            <li><a href="mailto:dummy@example.com">dummy@example.com</a></li>
+            <li><a href="mailto:vyankateshwaracafe@gmail.com">vyankateshwaracafe@gmail.com</a></li>
           </ul>
           <div class="separator"><span></span></div>
           <div class="booking-info">
             <div class="bk-title">Booking request</div>
             <div class="bk-no">
-              <a href="tel:+91 1234567890">+91 1234567890</a>
+              <a href="tel:+91 8669455156">+91 8669455156</a>
             </div>
           </div>
         </div>
@@ -197,13 +197,13 @@
               444602
             </li>
             <li>Daily : 07.00 am to 10.00 pm</li>
-            <li><a href="mailto:dummy@example.com">dummy@example.com</a></li>
+            <li><a href="mailto:vyankateshwaracafe@gmail.com">vyankateshwaracafe@gmail.com</a></li>
           </ul>
           <div class="separator"><span></span></div>
           <div class="booking-info">
             <div class="bk-title">Booking request</div>
             <div class="bk-no">
-              <a href="tel:+91 1234567890">+91 1234567890</a>
+              <a href="tel:+91 8669455156">+91 8669455156</a>
             </div>
           </div>
         </div>
@@ -213,7 +213,7 @@
       <section class="inner-banner">
         <div
           class="image-layer"
-          style="background-image: url(images/contact-bg.jpg)"
+          style="background-image: url(images/contact-bg.jpeg)"
         ></div>
         <div class="auto-container">
           <div class="inner">
@@ -277,10 +277,10 @@
                     <h4>Contact Info</h4>
                     <div class="text">
                       Irwin Square, Camp Rd, Paranjpe Colony, Amravati,
-                      Maharashtra 444602<br />Email : dummy@example.com
+                      Maharashtra 444602<br />Email : vyankateshwaracafe@gmail.com
                     </div>
                     <div class="more-link">
-                      <a href="#">Booking : +91 1234567890</a>
+                      <a href="tel:+91 8669455156">Booking : +91 8669455156</a>
                     </div>
                   </div>
                 </div>
@@ -317,13 +317,13 @@
                   </div>
                 </div>
                 <div class="default-form reservation-form">
-                  <form method="post" action="index.php">
+                  <form id="whatsapp-form">
                     <div class="clearfix">
                       <div class="form-group">
                         <div class="field-inner">
                           <input
                             type="text"
-                            name="fieldname"
+                            name="name"
                             value=""
                             placeholder="Your Name"
                             required=""
@@ -333,8 +333,8 @@
                       <div class="form-group">
                         <div class="field-inner">
                           <input
-                            type="text"
-                            name="fieldname"
+                            type="email"
+                            name="email"
                             value=""
                             placeholder="Your Email"
                             required=""
@@ -345,7 +345,7 @@
                         <div class="field-inner">
                           <input
                             type="text"
-                            name="fieldname"
+                            name="phone"
                             value=""
                             placeholder="Phone Number"
                             required=""
@@ -356,7 +356,7 @@
                       <div class="form-group">
                         <div class="field-inner">
                           <textarea
-                            name="fieldname"
+                            name="message"
                             placeholder="Special Request"
                             required=""
                           ></textarea>
@@ -418,13 +418,13 @@
                           Maharashtra 444602
                         </li>
                         <li>
-                          <a href="mailto:dummy@example.com"
-                            >dummy@example.com</a
+                          <a href="mailto:vyankateshwaracafe@gmail.com"
+                            >vyankateshwaracafe@gmail.com</a
                           >
                         </li>
                         <li>
-                          <a href="tel:+91 1234567890"
-                            >Booking Request : +91 1234567890</a
+                          <a href="tel:+91 8669455156"
+                            >Booking Request : +91 8669455156</a
                           >
                         </li>
                         <li>Open : 07:00 am - 10:00 pm</li>
@@ -546,5 +546,29 @@
     <script src="js/appear.js"></script>
     <script src="js/wow.js"></script>
     <script src="js/custom-script.js"></script>
+    <script>
+      document.getElementById('whatsapp-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Get form values
+        const name = this.querySelector('[name="name"]').value;
+        const email = this.querySelector('[name="email"]').value;
+        const phone = this.querySelector('[name="phone"]').value;
+        const message = this.querySelector('[name="message"]').value;
+        
+        // Construct the WhatsApp message
+        const whatsappMessage = `*New Contact Request*%0A%0A` +
+                                `*Name:* ${encodeURIComponent(name)}%0A` +
+                                `*Email:* ${encodeURIComponent(email)}%0A` +
+                                `*Phone:* ${encodeURIComponent(phone)}%0A` +
+                                `*Message:* ${encodeURIComponent(message)}`;
+        
+        // WhatsApp URL
+        const whatsappUrl = `https://wa.me/918669455156?text=${whatsappMessage}`;
+        
+        // Redirect to WhatsApp
+        window.open(whatsappUrl, '_blank');
+      });
+    </script>
   </body>
 </html>
