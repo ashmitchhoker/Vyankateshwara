@@ -29,6 +29,12 @@
         height: 6000px;
       }
 
+      @media (max-width: 767px) {
+        .frame-scroll-section {
+          height: 4000px; /* Shorter runway for better mobile feel */
+        }
+      }
+
       .frame-canvas-wrap {
         position: absolute;
         top: 0;
@@ -37,7 +43,11 @@
         height: 100vh;
         overflow: hidden;
         background: #0a0a0a;
-        z-index: 1;
+        /* High priority stacking to prevent bg bleed */
+        z-index: 10; 
+        /* GPU optimization */
+        transform: translateZ(0);
+        will-change: transform;
       }
 
       .frame-canvas-wrap.is-fixed {
@@ -300,7 +310,7 @@
                       style="display: flex; justify-content: flex-end"
                     >
                       <li><a href="index.html">Home</a></li>
-                      <li><a href="restaurant.html">Restaurant</a></li>
+                      <li class="current"><a href="restaurant.html">Restaurant</a></li>
                       <li><a href="menu.html">Menu</a></li>
                       <li><a href="contact-us.html">Contact Us</a></li>
                     </ul>
@@ -332,8 +342,8 @@
           <!-- .Side-menu -->
           <div class="side-menu">
             <ul class="navigation clearfix">
-              <li class="current"><a href="index.html">Home</a></li>
-              <li><a href="restaurant.html">Restaurant</a></li>
+              <li><a href="index.html">Home</a></li>
+              <li class="current"><a href="restaurant.html">Restaurant</a></li>
               
               
               
@@ -610,19 +620,25 @@
       'use strict';
 
       // ───────── CONFIGURATION ─────────
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      
       const TOTAL_FRAMES = 840;
       const FRAME_PATH = 'images/cafe_webp/1 - MERGE - Videobolt.net_';
       const FRAME_EXT = '.webp';
-      const FRAME_STEP = 2;                // Load every 2nd frame → 420 total
-      const CRITICAL_COUNT = 100;           // First 100 frames = priority batch
-      const BG_BATCH_SIZE = 30;             // Background loading batch size
-      const BG_BATCH_DELAY = 50;            // ms between background batches
+      
+      // Memory Optimization: Load much fewer frames on mobile to prevent crashes
+      const FRAME_STEP = isMobile ? 12 : 2; 
+      const CRITICAL_COUNT = isMobile ? 6 : 40; 
+      const DPR_CAP = isMobile ? 1.2 : 2; // Cap pixel density to save 4x-6x RAM on mobile
+      
+      const BG_BATCH_SIZE = isMobile ? 10 : 30;
+      const BG_BATCH_DELAY = isMobile ? 100 : 50;
       const CACHE_NAME = 'vyankateshwara-frames-v1';
       const RESIZE_DEBOUNCE_MS = 150;
 
       // ───────── DOM ELEMENTS ─────────
       const canvas = document.getElementById('frameCanvas');
-      const ctx = canvas.getContext('2d', { alpha: false }); // opaque = faster compositing
+      const ctx = canvas.getContext('2d', { alpha: false });
       const section = document.getElementById('frameScrollSection');
       const canvasWrap = document.getElementById('frameCanvasWrap');
       const loader = document.getElementById('frameLoader');
@@ -641,11 +657,13 @@
       for (let i = 1; i <= TOTAL_FRAMES; i += FRAME_STEP) {
         frameIndices.push(i);
       }
-      const FRAME_COUNT = frameIndices.length; // 420
+      const FRAME_COUNT = frameIndices.length; 
 
       // ───────── IMAGE STORE ─────────
-      const frames = new Array(FRAME_COUNT);         // Image | ImageBitmap
-      const frameReady = new Uint8Array(FRAME_COUNT); // 0 = not loaded, 1 = loaded
+      const frames = new Array(FRAME_COUNT);         
+      const frameReady = new Uint8Array(FRAME_COUNT); 
+      let frameWidth = 0;   // Cached once from first loaded frame
+      let frameHeight = 0;  // Cached once from first loaded frame
       let criticalLoaded = 0;
       let totalLoaded = 0;
       let criticalDone = false;
@@ -691,11 +709,11 @@
           const response = await fetchWithCache(url);
           const blob = await response.blob();
 
-          // Prefer ImageBitmap (decoded on GPU, faster drawImage)
-          if (typeof createImageBitmap === 'function') {
-            frames[slotIndex] = await createImageBitmap(blob);
+          let frame;
+          // Only use ImageBitmap on Desktop (more stable)
+          if (!isMobile && typeof createImageBitmap === 'function') {
+            frame = await createImageBitmap(blob);
           } else {
-            // Fallback: use HTMLImageElement
             const img = new Image();
             const loaded = new Promise((res, rej) => {
               img.onload = res;
@@ -703,13 +721,21 @@
             });
             img.src = URL.createObjectURL(blob);
             await loaded;
-            frames[slotIndex] = img;
+            frame = img;
+          }
+          
+          frames[slotIndex] = frame;
+          
+          if (!frameWidth && frame) {
+            frameWidth = frame.width || frame.naturalWidth;
+            frameHeight = frame.height || frame.naturalHeight;
+            // GPU Wake-up: Draw immediately when we have the first real frame
+            requestAnimationFrame(() => drawFrame(0));
           }
 
           frameReady[slotIndex] = 1;
           return true;
         } catch (e) {
-          // Mark as attempted so we don't retry forever
           frameReady[slotIndex] = 0;
           return false;
         }
@@ -719,36 +745,42 @@
       async function startLoading() {
         await openCache();
 
-        // ── PHASE 1: Load first CRITICAL_COUNT frames (show loader) ──
-        const criticalEnd = Math.min(CRITICAL_COUNT, FRAME_COUNT);
-        const criticalPromises = [];
+        // ── FAILSAFE: Force hide loader after 10s ──
+        const failsafeTimer = setTimeout(() => {
+          if (!criticalDone) {
+            console.warn("Loading taking too long, forcing start...");
+            finishLoading();
+          }
+        }, 10000);
 
-        for (let i = 0; i < criticalEnd; i++) {
-          criticalPromises.push(
-            loadFrame(i).then(ok => {
-              criticalLoaded++;
-              totalLoaded++;
-              const pct = Math.round((criticalLoaded / criticalEnd) * 100);
-              loaderBar.style.width = pct + '%';
-              loaderText.textContent = 'Loading experience... ' + pct + '%';
-            })
-          );
+        // ── PHASE 1: Load first critical frames (show loader) ──
+        const criticalEnd = Math.min(CRITICAL_COUNT, FRAME_COUNT);
+        const batchSize = isMobile ? 3 : 15; 
+
+        console.log(`Starting load: ${FRAME_COUNT} total frames, ${criticalEnd} critical.`);
+
+        for (let i = 0; i < criticalEnd; i += batchSize) {
+          const batch = [];
+          const end = Math.min(i + batchSize, criticalEnd);
+          for (let j = i; j < end; j++) {
+            batch.push(
+              loadFrame(j).then((ok) => {
+                criticalLoaded++;
+                totalLoaded++;
+                const pct = Math.min(
+                  100,
+                  Math.round((criticalLoaded / criticalEnd) * 100),
+                );
+                loaderBar.style.width = pct + "%";
+                loaderText.textContent = "Loading experience... " + pct + "%";
+              }),
+            );
+          }
+          await Promise.all(batch);
         }
 
-        await Promise.all(criticalPromises);
-        criticalDone = true;
-
-        // Show the first frame & hide the loader immediately
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-        drawFrame(0);
-
-        setTimeout(function() {
-          overlayContent.classList.add('visible');
-        }, 200);
-        setTimeout(function() {
-          loader.classList.add('loaded');
-        }, 400);
+        clearTimeout(failsafeTimer);
+        finishLoading();
 
         // ── PHASE 2: Load remaining frames silently in background ──
         if (criticalEnd < FRAME_COUNT) {
@@ -758,8 +790,31 @@
         }
       }
 
+      function finishLoading() {
+        if (criticalDone) return;
+        criticalDone = true;
+
+        // Set initial canvas size
+        updateCanvasSize();
+        drawFrame(0);
+
+        setTimeout(function () {
+          overlayContent.classList.add("visible");
+        }, 200);
+        setTimeout(function () {
+          loader.classList.add("loaded");
+        }, 400);
+      }
+
       async function loadRemainingFrames(startIdx) {
         for (let i = startIdx; i < FRAME_COUNT; i += BG_BATCH_SIZE) {
+          // ── OPTIMIZATION: Pause background loading while scrolling ──
+          if (ticking) {
+            await new Promise(r => setTimeout(r, 500)); // Wait longer if user is busy scrolling
+            i -= BG_BATCH_SIZE; // Retry this batch
+            continue;
+          }
+
           const batchEnd = Math.min(i + BG_BATCH_SIZE, FRAME_COUNT);
           const batch = [];
           for (let j = i; j < batchEnd; j++) {
@@ -788,28 +843,42 @@
         return -1; // nothing loaded yet
       }
 
-      // ───────── COVER-FIT DRAW ─────────
-      // Pre-computed cover-fit values (updated on resize)
-      let coverCache = { cw: 0, ch: 0, iw: 0, ih: 0, sx: 0, sy: 0, sw: 0, sh: 0 };
+      // ───────── ADAPTIVE FRAME SIZING ─────────
+      let fitCache = { cw: 0, ch: 0, sx: 0, sy: 0, sw: 0, sh: 0, dx: 0, dy: 0, dw: 0, dh: 0 };
 
-      function computeCover(cw, ch, iw, ih) {
+      function computeFit(cw, ch, iw, ih) {
         const cr = cw / ch;
         const ir = iw / ih;
-        if (ir > cr) {
-          coverCache.sh = ih;
-          coverCache.sw = ih * cr;
-          coverCache.sx = (iw - coverCache.sw) / 2;
-          coverCache.sy = 0;
+        
+        let sx, sy, sw, sh, dx, dy, dw, dh;
+
+        if (isMobile) {
+          // MOBILE: Cinematic Fit (Zoom Out)
+          // Show the FULL WIDTH of the image, allow bars at top/bottom
+          sx = 0; sy = 0; sw = iw; sh = ih;
+          
+          dw = cw;
+          dh = cw / ir;
+          dx = 0;
+          dy = (ch - dh) / 2;
         } else {
-          coverCache.sw = iw;
-          coverCache.sh = iw / cr;
-          coverCache.sx = 0;
-          coverCache.sy = (ih - coverCache.sh) / 2;
+          // PC: Standard Cover Fit
+          // Fill the full screen, crop sides or top/bottom
+          if (ir > cr) {
+            sh = ih;
+            sw = ih * cr;
+            sx = (iw - sw) / 2;
+            sy = 0;
+          } else {
+            sw = iw;
+            sh = iw / cr;
+            sx = 0;
+            sy = (ih - sh) / 2;
+          }
+          dx = 0; dy = 0; dw = cw; dh = ch;
         }
-        coverCache.cw = cw;
-        coverCache.ch = ch;
-        coverCache.iw = iw;
-        coverCache.ih = ih;
+
+        fitCache = { cw, ch, sx, sy, sw, sh, dx, dy, dw, dh };
       }
 
       let lastDrawnIdx = -1;
@@ -825,18 +894,28 @@
         const src = frames[slot];
         if (!src) return;
 
-        const cw = canvas.width;
-        const ch = canvas.height;
-        const iw = src.width || src.naturalWidth;
-        const ih = src.height || src.naturalHeight;
-        if (!iw || !ih) return;
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        
+        if (!frameWidth && src) {
+          frameWidth = src.width || src.naturalWidth;
+          frameHeight = src.height || src.naturalHeight;
+        }
+        
+        const iw = frameWidth || 1920; 
+        const ih = frameHeight || 1080;
 
-        // Recompute cover-fit only when dimensions change
-        if (cw !== coverCache.cw || ch !== coverCache.ch || iw !== coverCache.iw || ih !== coverCache.ih) {
-          computeCover(cw, ch, iw, ih);
+        // Recompute fit only when window or image dimensions change
+        if (w !== fitCache.cw || h !== fitCache.ch) {
+          computeFit(w, h, iw, ih);
         }
 
-        ctx.drawImage(src, coverCache.sx, coverCache.sy, coverCache.sw, coverCache.sh, 0, 0, cw, ch);
+        // Draw with destination rectangle
+        ctx.clearRect(0, 0, w, h); // Clear to ensure clean bars in Cinematic view
+        ctx.drawImage(src, 
+          fitCache.sx, fitCache.sy, fitCache.sw, fitCache.sh, 
+          fitCache.dx, fitCache.dy, fitCache.dw, fitCache.dh
+        );
       }
 
       // ───────── SCROLL HANDLER ─────────
@@ -857,16 +936,23 @@
         const rect = section.getBoundingClientRect();
         const sectionTop = -rect.top;
         const sectionHeight = section.offsetHeight;
-        const scrollRange = sectionHeight - window.innerHeight;
+        const viewportHeight = window.innerHeight;
+        const scrollRange = sectionHeight - viewportHeight;
+        
         if (scrollRange <= 0) return;
 
-        // Manage fixed/absolute positioning (simulating sticky)
+        // ── HYBRID PINNING ENGINE ──
+        // This ensures the animation stays "locked" in front of the user
+        // even when parent containers have restrictive overflow settings.
         if (rect.top > 0) {
+          // We are above the section: stay at the top of the section
           canvasWrap.classList.remove('is-fixed', 'is-bottom');
-        } else if (sectionTop >= scrollRange) {
+        } else if (rect.bottom <= viewportHeight) {
+          // We have reached the bottom: stay at the bottom of the section
           canvasWrap.classList.remove('is-fixed');
           canvasWrap.classList.add('is-bottom');
         } else {
+          // We are middle: stick to the screen
           canvasWrap.classList.add('is-fixed');
           canvasWrap.classList.remove('is-bottom');
         }
@@ -899,15 +985,36 @@
         }
       }
 
+      function updateCanvasSize() {
+        const dpr = Math.min(window.devicePixelRatio || 1, DPR_CAP);
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        
+        // ── VISIBILITY FIX: Reset styles before re-applying to clear any browser glitches ──
+        canvas.style.width = '';
+        canvas.style.height = '';
+        
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
+        
+        // CSS display size stays 100%
+        canvas.style.width = w + "px";
+        canvas.style.height = h + "px";
+        
+        // Use a more compatible scaling method for mobile Safari/Chrome
+        ctx.setTransform(1, 0, 0, 1, 0, 0); 
+        ctx.scale(dpr, dpr);
+        
+        lastDrawnIdx = -1; // force redraw
+      }
+
       // ───────── DEBOUNCED RESIZE ─────────
       let resizeTimer = null;
 
       function onResize() {
         clearTimeout(resizeTimer);
         resizeTimer = setTimeout(function() {
-          canvas.width = window.innerWidth;
-          canvas.height = window.innerHeight;
-          lastDrawnIdx = -1; // force redraw
+          updateCanvasSize();
           drawFrame(currentFrame);
         }, RESIZE_DEBOUNCE_MS);
       }
@@ -916,9 +1023,8 @@
       window.addEventListener('scroll', onScroll, { passive: true });
       window.addEventListener('resize', onResize, { passive: true });
 
-      // Set initial canvas size
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+      // Initial Canvas Setup
+      updateCanvasSize();
 
       // Trigger initial position check
       updateFrame();

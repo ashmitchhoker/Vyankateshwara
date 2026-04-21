@@ -654,6 +654,57 @@
     font-size: 48px;
   }
 
+  .bg-video-wrap {
+    height: auto !important;
+    min-height: 500px;
+  }
+
+  .bg-video-wrap .hero-image,
+  .bg-video-wrap .overlay {
+    height: 100% !important;
+    min-height: 500px;
+  }
+
+  .bg-video-wrap .auto-container {
+    position: relative !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    margin-top: 0 !important;
+    padding-top: 80px;
+    padding-bottom: 80px;
+  }
+
+  .bg-video-wrap .content-box {
+    display: block !important;
+    height: auto !important;
+    min-height: 0 !important;
+    padding-top: 0 !important;
+  }
+
+  .bg-video-wrap .content {
+    display: block !important;
+    width: 100% !important;
+  }
+
+  .bg-video-wrap h1 {
+    font-size: 48px !important; /* Larger prominent heading for mobile */
+    line-height: 1.1em !important;
+    margin-top: 10px !important;
+  }
+
+  .bg-video-wrap .subtitle {
+    font-size: 18px !important; /* Elegant subtitle size for mobile */
+    letter-spacing: 0.25em !important;
+    margin-bottom: 5px !important;
+    font-weight: 600 !important;
+  }
+
+  .bg-video-wrap .text {
+    font-size: 18px !important;
+    line-height: 1.5em !important;
+    padding: 0 15px;
+  }
+
   h2,
   .intro-section .content-box h3,
   .featured-section .text-col h2,
