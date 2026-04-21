@@ -733,12 +733,12 @@
     text-align: center;
   }
 
-  .intro-section .fact-counter {
+  .why-us .fact-counter {
     text-align: center;
   }
 
-  .intro-section .fact-counter .fact-count,
-  .intro-section .fact-counter .fact-title {
+  .why-us .fact-counter .fact-count,
+  .why-us .fact-counter .fact-title {
     float: none;
     display: block;
     margin-left: 0;
@@ -875,7 +875,7 @@
 
   .banner-section .slide-item h1,
   h1,
-  .intro-section .fact-counter .count-box,
+  .why-us .fact-counter .count-box,
   .inner-banner .inner h1,
   .about-section .fact-counter .fact-count {
     font-size: 40px;
@@ -982,7 +982,7 @@
 @media only screen and (max-width: 479px) {
   .banner-section .slide-item h1,
   h1,
-  .intro-section .fact-counter .count-box,
+  .why-us .fact-counter .count-box,
   .inner-banner .inner h1,
   .about-section .fact-counter .fact-count {
     font-size: 34px;

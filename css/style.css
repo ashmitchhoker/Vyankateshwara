@@ -3906,13 +3906,13 @@ video {
   position: absolute;
 }
 
-.intro-section .fact-counter {
+.why-us .fact-counter {
   position: relative;
   padding-top: var(--padding-top-75);
   margin-top: var(--margin-top-70);
 }
 
-.intro-section .fact-counter:before {
+.why-us .fact-counter:before {
   content: "";
   position: absolute;
   left: 0;
@@ -3922,28 +3922,28 @@ video {
   background: url(../images/pattern-10.svg) left top repeat;
 }
 
-.intro-section .fact-counter .fact-block {
+.why-us .fact-counter .fact-block {
   position: relative;
   margin-bottom: var(--margin-bottom-50);
 }
 
-.intro-section .fact-counter .fact-count {
+.why-us .fact-counter .fact-count {
   position: relative;
   float: left;
 }
 
-.intro-section .fact-counter .count-box {
+.why-us .fact-counter .count-box {
   position: relative;
   line-height: 60px;
   font-size: var(--font-60);
   font-family: var(--font-family-Forum);
 }
 
-.intro-section .fact-counter .count-box i {
+.why-us .fact-counter .count-box i {
   font-style: normal;
 }
 
-.intro-section .fact-counter .fact-title {
+.why-us .fact-counter .fact-title {
   position: relative;
   float: left;
   padding-top: 10px;
@@ -5115,10 +5115,9 @@ video {
 
 .testimonials-two .testi-block .auth-info {
   position: relative;
-  min-height: 140px;
   line-height: 20px;
   padding-top: var(--padding-top-20);
-  padding-left: var(--padding-left-105);
+  text-align: center;
 }
 
 .testimonials-two .testi-block .auth-info .auth-title {
