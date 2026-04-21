@@ -18,6 +18,208 @@
     <!--[if lt IE 9
       ]><script src="https://cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv.js"></script
     ><![endif]-->
+    <style>
+      /* ===== Scroll-Driven Frame Animation ===== */
+      .frame-scroll-section {
+        position: relative;
+        /* Height creates the scroll runway — more height = slower animation */
+        height: 6000px;
+      }
+
+      .frame-canvas-wrap {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100vh;
+        overflow: hidden;
+        background: #0a0a0a;
+        z-index: 1;
+      }
+
+      .frame-canvas-wrap.is-fixed {
+        position: fixed;
+        top: 0;
+        left: 0;
+      }
+
+      .frame-canvas-wrap.is-bottom {
+        position: absolute;
+        top: auto;
+        bottom: 0;
+      }
+
+      .frame-canvas-wrap canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      /* Loading overlay */
+      .frame-loader {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: #0a0a0a;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        transition: opacity 0.8s ease, visibility 0.8s ease;
+      }
+
+      .frame-loader.loaded {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+      }
+
+      .frame-loader .loader-logo {
+        max-width: 180px;
+        margin-bottom: 30px;
+        animation: loaderPulse 1.5s ease-in-out infinite;
+      }
+
+      @keyframes loaderPulse {
+        0%, 100% { opacity: 0.5; transform: scale(0.97); }
+        50% { opacity: 1; transform: scale(1); }
+      }
+
+      .loader-bar-track {
+        width: 260px;
+        height: 3px;
+        background: rgba(255,255,255,0.1);
+        border-radius: 3px;
+        overflow: hidden;
+        margin-bottom: 16px;
+      }
+
+      .loader-bar-fill {
+        height: 100%;
+        width: 0%;
+        background: linear-gradient(90deg, #c4956a, #e8c992);
+        border-radius: 3px;
+        transition: width 0.15s ease;
+      }
+
+      .loader-text {
+        font-family: 'Cormorant Garamond', serif;
+        color: rgba(255,255,255,0.5);
+        font-size: 14px;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+      }
+
+      /* Overlay content on the sticky canvas */
+      .frame-overlay-content {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
+        z-index: 2;
+      }
+
+      .frame-overlay-content .overlay-inner {
+        text-align: center;
+        opacity: 0;
+        transform: translateY(30px);
+        transition: opacity 0.8s ease, transform 0.8s ease;
+      }
+
+      .frame-overlay-content .overlay-inner.visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      .frame-overlay-content .overlay-subtitle {
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 18px;
+        letter-spacing: 5px;
+        text-transform: uppercase;
+        color: #e8c992;
+        margin-bottom: 10px;
+        text-shadow: 0 2px 12px rgba(0,0,0,0.8), 0 0 40px rgba(0,0,0,0.5);
+      }
+
+      .frame-overlay-content .overlay-title {
+        font-family: 'Cormorant Garamond', serif;
+        font-size: clamp(36px, 5vw, 68px);
+        color: #fff;
+        font-weight: 400;
+        line-height: 1.2;
+        text-shadow: 0 2px 20px rgba(0,0,0,0.9), 0 4px 50px rgba(0,0,0,0.6), 0 0 80px rgba(0,0,0,0.4);
+      }
+
+      .frame-overlay-content .overlay-separator {
+        width: 80px;
+        margin: 15px auto;
+      }
+
+      /* Scroll hint arrow */
+      .scroll-hint {
+        position: absolute;
+        bottom: 40px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 3;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        opacity: 1;
+        transition: opacity 0.5s ease;
+      }
+
+      .scroll-hint.hidden {
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .scroll-hint span {
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 13px;
+        letter-spacing: 4px;
+        text-transform: uppercase;
+        color: rgba(255,255,255,0.9);
+        margin-bottom: 10px;
+        text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+      }
+
+      .scroll-hint .arrow {
+        width: 22px;
+        height: 22px;
+        border-right: 2px solid rgba(255,255,255,0.85);
+        border-bottom: 2px solid rgba(255,255,255,0.85);
+        transform: rotate(45deg);
+        animation: scrollBounce 2s ease-in-out infinite;
+        filter: drop-shadow(0 2px 6px rgba(0,0,0,0.6));
+      }
+
+      @keyframes scrollBounce {
+        0%, 100% { transform: rotate(45deg) translateY(0); }
+        50% { transform: rotate(45deg) translateY(8px); }
+      }
+
+      /* Frame progress indicator */
+      .frame-progress {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 0%;
+        height: 3px;
+        background: linear-gradient(90deg, #c4956a, #e8c992);
+        z-index: 4;
+        transition: width 0.05s linear;
+      }
+    </style>
   </head>
 
   <body>
@@ -199,85 +401,42 @@
       </section>
       <!--End Hidden Bar -->
 
-      <!-- Inner Banner Section -->
-      <section class="inner-banner">
-        <div
-          class="image-layer"
-          style="background-image: url(images/menu-background.jpg)"
-        ></div>
-        <div class="auto-container">
-          <div class="inner">
-            <div class="subtitle">
-              <span>Delicious Moments, Every Time</span>
+      <!-- ========== LOADING OVERLAY ========== -->
+      <div class="frame-loader" id="frameLoader">
+        <img src="images/logo.png" alt="Loading..." class="loader-logo" />
+        <div class="loader-bar-track">
+          <div class="loader-bar-fill" id="loaderBarFill"></div>
+        </div>
+        <div class="loader-text" id="loaderText">Loading experience...</div>
+      </div>
+
+      <!-- ========== SCROLL-DRIVEN FRAME ANIMATION SECTION ========== -->
+      <section class="frame-scroll-section" id="frameScrollSection">
+        <div class="frame-canvas-wrap" id="frameCanvasWrap">
+          <!-- Progress bar -->
+          <div class="frame-progress" id="frameProgress"></div>
+
+          <!-- Canvas for drawing frames -->
+          <canvas id="frameCanvas"></canvas>
+
+          <!-- Text overlay that appears/disappears based on scroll -->
+          <div class="frame-overlay-content">
+            <div class="overlay-inner" id="overlayContent">
+              <div class="overlay-subtitle">Welcome to</div>
+              <img src="images/separator.svg" alt="" class="overlay-separator" />
+              <div class="overlay-title">Vyankateshwara<br/>Café & Restaurant</div>
+              <img src="images/separator.svg" alt="" class="overlay-separator" />
+              <div class="overlay-subtitle" style="margin-top: 5px;">A Virtual Walkthrough</div>
             </div>
-            <div class="pattern-image">
-              <img src="images/separator.svg" alt="" title="" />
-            </div>
-            <h1><span>Restaurant</span></h1>
+          </div>
+
+          <!-- Scroll hint -->
+          <div class="scroll-hint" id="scrollHint">
+            <span>Scroll to explore</span>
+            <div class="arrow"></div>
           </div>
         </div>
       </section>
-      <!--End Banner Section -->
-
-      <!--Menu Section-->
-      <section class="menu-one">
-        <div class="left-bg">
-          <img src="images/bg-17.png" alt="" title="" />
-        </div>
-        <div class="right-bg-2">
-          <img src="images/bg-18.png" alt="" title="" />
-        </div>
-        <div class="auto-container">
-          <div class="title-box centered">
-            <div class="subtitle">
-              <span>Unlimited Buffet Restaurant Menu & Prices</span>
-            </div>
-            <div class="pattern-image">
-              <img src="images/separator.svg" alt="" title="" />
-            </div>
-            <h2>THE TASTE ATLAS – 200+ Special Dishes TO EXPLORE</h2>
-          </div>
-
-          <div class="row clearfix">
-            <div class="image-col col-lg-12 col-md-12 col-sm-12">
-              <div class="inner">
-                <div class="image">
-                  <img src="images/Jorshor-Menu-101-Items.jpeg" alt="" />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!--Menu Section-->
-      <section class="menu-one alternate">
-        <div class="left-bg">
-          <img src="images/bg-17.png" alt="" title="" />
-        </div>
-        <div class="right-bg-2">
-          <img src="images/bg-18.png" alt="" title="" />
-        </div>
-        <div class="auto-container">
-          <div class="title-box centered">
-            <div class="subtitle"><span>TERMS AND CONDITIONS</span></div>
-            <div class="pattern-image">
-              <img src="images/separator.svg" alt="" title="" />
-            </div>
-          </div>
-
-          <div class="row clearfix">
-            <div class="image-col col-lg-12 col-md-12 col-sm-12">
-              <div class="inner">
-                <div class="image">
-                  <img src="images/terms-and-conditions.jpg" alt="" />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-      <!--Featured Section-->
 
       <!--Featured Section-->
       <!--Main Footer-->
@@ -370,7 +529,6 @@
                     <li><a href="restaurant.html">Restaurant</a></li>
                     
                     
-                    
                     <li><a href="menu.html">Menu</a></li>
                     <li><a href="contact-us.html">Contact Us</a></li>
                   </ul>
@@ -386,7 +544,6 @@
                   data-wow-duration="1500ms"
                 >
                   <ul class="links">
-                    
                     
 
                     <li>
@@ -441,5 +598,217 @@
     <script src="js/appear.js"></script>
     <script src="js/wow.js"></script>
     <script src="js/custom-script.js"></script>
+
+    <!-- ========== SCROLL-DRIVEN FRAME ANIMATION SCRIPT ========== -->
+    <script>
+    (function() {
+      'use strict';
+
+      // Configuration
+      const TOTAL_FRAMES = 840;
+      const FRAME_PATH = 'images/cafe_webp/1 - MERGE - Videobolt.net_';
+      const FRAME_EXT = '.webp';
+      // Skip every other frame for performance — load 420 frames instead of 840
+      const FRAME_STEP = 2;
+
+      // DOM elements
+      const canvas = document.getElementById('frameCanvas');
+      const ctx = canvas.getContext('2d');
+      const section = document.getElementById('frameScrollSection');
+      const canvasWrap = document.getElementById('frameCanvasWrap');
+      const loader = document.getElementById('frameLoader');
+      const loaderBar = document.getElementById('loaderBarFill');
+      const loaderText = document.getElementById('loaderText');
+      const overlayContent = document.getElementById('overlayContent');
+      const scrollHint = document.getElementById('scrollHint');
+      const progressBar = document.getElementById('frameProgress');
+
+      // Build frame file paths
+      function getFramePath(index) {
+        const num = String(index).padStart(6, '0');
+        return FRAME_PATH + num + FRAME_EXT;
+      }
+
+      // Create ordered list of frame indices (stepping)
+      const frameIndices = [];
+      for (let i = 1; i <= TOTAL_FRAMES; i += FRAME_STEP) {
+        frameIndices.push(i);
+      }
+      const LOADED_FRAME_COUNT = frameIndices.length;
+
+      // Image store
+      const images = new Array(LOADED_FRAME_COUNT);
+      let loadedCount = 0;
+      let allLoaded = false;
+
+      // Preload all frames
+      function preloadFrames() {
+        // Load in small batches to avoid overwhelming the browser
+        const BATCH_SIZE = 20;
+        let batchStart = 0;
+
+        function loadBatch() {
+          const end = Math.min(batchStart + BATCH_SIZE, LOADED_FRAME_COUNT);
+          for (let i = batchStart; i < end; i++) {
+            const img = new Image();
+            img.onload = onFrameLoaded;
+            img.onerror = onFrameLoaded; // count errors too so we don't stall
+            img.src = getFramePath(frameIndices[i]);
+            images[i] = img;
+          }
+          batchStart = end;
+          if (batchStart < LOADED_FRAME_COUNT) {
+            // Schedule next batch after a micro‑delay
+            setTimeout(loadBatch, 0);
+          }
+        }
+
+        loadBatch();
+      }
+
+      function onFrameLoaded() {
+        loadedCount++;
+        const pct = Math.round((loadedCount / LOADED_FRAME_COUNT) * 100);
+        loaderBar.style.width = pct + '%';
+        loaderText.textContent = 'Loading experience... ' + pct + '%';
+
+        if (loadedCount >= LOADED_FRAME_COUNT) {
+          allLoaded = true;
+          // Size the canvas to fill the viewport
+          canvas.width = window.innerWidth;
+          canvas.height = window.innerHeight;
+          // Draw the first frame
+          drawFrame(0);
+          // Show overlay text
+          setTimeout(function() {
+            overlayContent.classList.add('visible');
+          }, 300);
+          // Hide loader
+          setTimeout(function() {
+            loader.classList.add('loaded');
+          }, 600);
+        }
+      }
+
+      // Draw a specific frame index with cover-fit
+      function drawFrame(idx) {
+        if (idx < 0) idx = 0;
+        if (idx >= LOADED_FRAME_COUNT) idx = LOADED_FRAME_COUNT - 1;
+        const img = images[idx];
+        if (!img || !img.naturalWidth) return;
+
+        const cw = canvas.width;
+        const ch = canvas.height;
+        const iw = img.naturalWidth;
+        const ih = img.naturalHeight;
+
+        // Calculate cover-fit (like CSS object-fit: cover)
+        const canvasRatio = cw / ch;
+        const imgRatio = iw / ih;
+        let sx, sy, sw, sh;
+
+        if (imgRatio > canvasRatio) {
+          // Image is wider — crop sides
+          sh = ih;
+          sw = ih * canvasRatio;
+          sx = (iw - sw) / 2;
+          sy = 0;
+        } else {
+          // Image is taller — crop top/bottom
+          sw = iw;
+          sh = iw / canvasRatio;
+          sx = 0;
+          sy = (ih - sh) / 2;
+        }
+
+        ctx.clearRect(0, 0, cw, ch);
+        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, cw, ch);
+      }
+
+      // Scroll handler — maps scroll position to frame index
+      let currentFrame = 0;
+      let ticking = false;
+
+      function onScroll() {
+        if (!allLoaded) return;
+        if (!ticking) {
+          requestAnimationFrame(updateFrame);
+          ticking = true;
+        }
+      }
+
+      function updateFrame() {
+        ticking = false;
+
+        const rect = section.getBoundingClientRect();
+        const sectionTop = -rect.top;
+        const sectionHeight = section.offsetHeight;
+        const scrollRange = sectionHeight - window.innerHeight;
+        if (scrollRange <= 0) return;
+
+        // Manage fixed/absolute positioning (simulating sticky)
+        if (rect.top > 0) {
+          // Section hasn't reached the top yet — stay at top of section
+          canvasWrap.classList.remove('is-fixed', 'is-bottom');
+        } else if (sectionTop >= scrollRange) {
+          // Scrolled past the section — anchor to bottom
+          canvasWrap.classList.remove('is-fixed');
+          canvasWrap.classList.add('is-bottom');
+        } else {
+          // In the scroll range — fix to viewport
+          canvasWrap.classList.add('is-fixed');
+          canvasWrap.classList.remove('is-bottom');
+        }
+
+        let progress = sectionTop / scrollRange;
+        progress = Math.max(0, Math.min(1, progress));
+
+        const frameIdx = Math.round(progress * (LOADED_FRAME_COUNT - 1));
+
+        // Update progress bar
+        progressBar.style.width = (progress * 100) + '%';
+
+        // Show/hide overlay text — only visible in first 8% of scroll
+        if (progress < 0.08) {
+          overlayContent.classList.add('visible');
+        } else {
+          overlayContent.classList.remove('visible');
+        }
+
+        // Hide scroll hint after initial scroll
+        if (progress > 0.02) {
+          scrollHint.classList.add('hidden');
+        } else {
+          scrollHint.classList.remove('hidden');
+        }
+
+        if (frameIdx !== currentFrame) {
+          currentFrame = frameIdx;
+          drawFrame(currentFrame);
+        }
+      }
+
+      // Size canvas to fill viewport
+      function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        drawFrame(currentFrame);
+      }
+
+      // Initialize
+      window.addEventListener('scroll', onScroll, { passive: true });
+      window.addEventListener('resize', resizeCanvas);
+
+      // Set initial canvas size before loading
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+
+      // Trigger initial position check
+      updateFrame();
+
+      preloadFrames();
+    })();
+    </script>
   </body>
+
 </html>
