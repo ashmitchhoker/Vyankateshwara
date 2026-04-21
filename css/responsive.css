@@ -670,7 +670,7 @@
     top: 0 !important;
     bottom: 0 !important;
     margin-top: 0 !important;
-    padding-top: 80px;
+    padding-top: 130px;
     padding-bottom: 80px;
   }
 
@@ -695,7 +695,7 @@
   .bg-video-wrap .subtitle {
     font-size: 18px !important; /* Elegant subtitle size for mobile */
     letter-spacing: 0.25em !important;
-    margin-bottom: 5px !important;
+    margin-bottom: 25px !important;
     font-weight: 600 !important;
   }
 
