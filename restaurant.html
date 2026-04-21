@@ -3,6 +3,9 @@
   <head>
     <meta charset="utf-8" />
     <title>Restaurant || Vyankateshwara Café</title>
+    <meta name="description" content="Take a virtual walkthrough of Vyankateshwara Café & Restaurant in Amravati. Explore the ambiance, interiors, and dining experience." />
+    <!-- Preload first frame for instant display -->
+    <link rel="preload" href="images/cafe_webp/1 - MERGE - Videobolt.net_000001.webp" as="image" type="image/webp" />
     <!-- Stylesheets -->
     <link href="css/bootstrap.css" rel="stylesheet" />
     <link href="css/style.css" rel="stylesheet" />
@@ -378,7 +381,7 @@
             /></a>
           </div>
           <div class="image-box">
-            <img src="images/sidebar-image.jpg" alt="" title="" />
+            <img src="images/sidebar-image.jpg" alt="" title="" loading="lazy" decoding="async" />
           </div>
 
           <h2>Visit Us</h2>
@@ -463,6 +466,8 @@
                           alt=""
                           title="Vyankateshwara Cafe logo"
                           style="max-width: 15rem; height: auto"
+                          loading="lazy"
+                          decoding="async"
                       /></a>
                     </div>
                     <div class="info">
@@ -599,21 +604,25 @@
     <script src="js/wow.js"></script>
     <script src="js/custom-script.js"></script>
 
-    <!-- ========== SCROLL-DRIVEN FRAME ANIMATION SCRIPT ========== -->
+    <!-- ========== SCROLL-DRIVEN FRAME ANIMATION SCRIPT (OPTIMIZED) ========== -->
     <script>
     (function() {
       'use strict';
 
-      // Configuration
+      // ───────── CONFIGURATION ─────────
       const TOTAL_FRAMES = 840;
       const FRAME_PATH = 'images/cafe_webp/1 - MERGE - Videobolt.net_';
       const FRAME_EXT = '.webp';
-      // Skip every other frame for performance — load 420 frames instead of 840
-      const FRAME_STEP = 2;
+      const FRAME_STEP = 2;                // Load every 2nd frame → 420 total
+      const CRITICAL_COUNT = 100;           // First 100 frames = priority batch
+      const BG_BATCH_SIZE = 30;             // Background loading batch size
+      const BG_BATCH_DELAY = 50;            // ms between background batches
+      const CACHE_NAME = 'vyankateshwara-frames-v1';
+      const RESIZE_DEBOUNCE_MS = 150;
 
-      // DOM elements
+      // ───────── DOM ELEMENTS ─────────
       const canvas = document.getElementById('frameCanvas');
-      const ctx = canvas.getContext('2d');
+      const ctx = canvas.getContext('2d', { alpha: false }); // opaque = faster compositing
       const section = document.getElementById('frameScrollSection');
       const canvasWrap = document.getElementById('frameCanvasWrap');
       const loader = document.getElementById('frameLoader');
@@ -623,114 +632,219 @@
       const scrollHint = document.getElementById('scrollHint');
       const progressBar = document.getElementById('frameProgress');
 
-      // Build frame file paths
+      // ───────── FRAME INDEX MAP ─────────
       function getFramePath(index) {
-        const num = String(index).padStart(6, '0');
-        return FRAME_PATH + num + FRAME_EXT;
+        return FRAME_PATH + String(index).padStart(6, '0') + FRAME_EXT;
       }
 
-      // Create ordered list of frame indices (stepping)
       const frameIndices = [];
       for (let i = 1; i <= TOTAL_FRAMES; i += FRAME_STEP) {
         frameIndices.push(i);
       }
-      const LOADED_FRAME_COUNT = frameIndices.length;
+      const FRAME_COUNT = frameIndices.length; // 420
 
-      // Image store
-      const images = new Array(LOADED_FRAME_COUNT);
-      let loadedCount = 0;
-      let allLoaded = false;
+      // ───────── IMAGE STORE ─────────
+      const frames = new Array(FRAME_COUNT);         // Image | ImageBitmap
+      const frameReady = new Uint8Array(FRAME_COUNT); // 0 = not loaded, 1 = loaded
+      let criticalLoaded = 0;
+      let totalLoaded = 0;
+      let criticalDone = false;
+      let allDone = false;
 
-      // Preload all frames
-      function preloadFrames() {
-        // Load in small batches to avoid overwhelming the browser
-        const BATCH_SIZE = 20;
-        let batchStart = 0;
+      // ───────── CACHE API HELPERS ─────────
+      let cacheAvailable = ('caches' in window);
+      let frameCache = null;
 
-        function loadBatch() {
-          const end = Math.min(batchStart + BATCH_SIZE, LOADED_FRAME_COUNT);
-          for (let i = batchStart; i < end; i++) {
+      async function openCache() {
+        if (!cacheAvailable) return null;
+        try {
+          frameCache = await caches.open(CACHE_NAME);
+          return frameCache;
+        } catch (e) {
+          cacheAvailable = false;
+          return null;
+        }
+      }
+
+      async function fetchWithCache(url) {
+        if (frameCache) {
+          try {
+            const cached = await frameCache.match(url);
+            if (cached) return cached;
+          } catch (e) { /* fallback to network */ }
+        }
+        const response = await fetch(url);
+        if (frameCache && response.ok) {
+          try {
+            // Clone before caching since body can only be consumed once
+            frameCache.put(url, response.clone());
+          } catch (e) { /* caching failed, non-critical */ }
+        }
+        return response;
+      }
+
+      // ───────── FRAME LOADER ─────────
+      // Load a single frame and optionally create an ImageBitmap for GPU performance
+      async function loadFrame(slotIndex) {
+        const url = getFramePath(frameIndices[slotIndex]);
+        try {
+          const response = await fetchWithCache(url);
+          const blob = await response.blob();
+
+          // Prefer ImageBitmap (decoded on GPU, faster drawImage)
+          if (typeof createImageBitmap === 'function') {
+            frames[slotIndex] = await createImageBitmap(blob);
+          } else {
+            // Fallback: use HTMLImageElement
             const img = new Image();
-            img.onload = onFrameLoaded;
-            img.onerror = onFrameLoaded; // count errors too so we don't stall
-            img.src = getFramePath(frameIndices[i]);
-            images[i] = img;
+            const loaded = new Promise((res, rej) => {
+              img.onload = res;
+              img.onerror = rej;
+            });
+            img.src = URL.createObjectURL(blob);
+            await loaded;
+            frames[slotIndex] = img;
           }
-          batchStart = end;
-          if (batchStart < LOADED_FRAME_COUNT) {
-            // Schedule next batch after a micro‑delay
-            setTimeout(loadBatch, 0);
-          }
-        }
 
-        loadBatch();
-      }
-
-      function onFrameLoaded() {
-        loadedCount++;
-        const pct = Math.round((loadedCount / LOADED_FRAME_COUNT) * 100);
-        loaderBar.style.width = pct + '%';
-        loaderText.textContent = 'Loading experience... ' + pct + '%';
-
-        if (loadedCount >= LOADED_FRAME_COUNT) {
-          allLoaded = true;
-          // Size the canvas to fill the viewport
-          canvas.width = window.innerWidth;
-          canvas.height = window.innerHeight;
-          // Draw the first frame
-          drawFrame(0);
-          // Show overlay text
-          setTimeout(function() {
-            overlayContent.classList.add('visible');
-          }, 300);
-          // Hide loader
-          setTimeout(function() {
-            loader.classList.add('loaded');
-          }, 600);
+          frameReady[slotIndex] = 1;
+          return true;
+        } catch (e) {
+          // Mark as attempted so we don't retry forever
+          frameReady[slotIndex] = 0;
+          return false;
         }
       }
 
-      // Draw a specific frame index with cover-fit
-      function drawFrame(idx) {
+      // ───────── PROGRESSIVE LOADING STRATEGY ─────────
+      async function startLoading() {
+        await openCache();
+
+        // ── PHASE 1: Load first CRITICAL_COUNT frames (show loader) ──
+        const criticalEnd = Math.min(CRITICAL_COUNT, FRAME_COUNT);
+        const criticalPromises = [];
+
+        for (let i = 0; i < criticalEnd; i++) {
+          criticalPromises.push(
+            loadFrame(i).then(ok => {
+              criticalLoaded++;
+              totalLoaded++;
+              const pct = Math.round((criticalLoaded / criticalEnd) * 100);
+              loaderBar.style.width = pct + '%';
+              loaderText.textContent = 'Loading experience... ' + pct + '%';
+            })
+          );
+        }
+
+        await Promise.all(criticalPromises);
+        criticalDone = true;
+
+        // Show the first frame & hide the loader immediately
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        drawFrame(0);
+
+        setTimeout(function() {
+          overlayContent.classList.add('visible');
+        }, 200);
+        setTimeout(function() {
+          loader.classList.add('loaded');
+        }, 400);
+
+        // ── PHASE 2: Load remaining frames silently in background ──
+        if (criticalEnd < FRAME_COUNT) {
+          loadRemainingFrames(criticalEnd);
+        } else {
+          allDone = true;
+        }
+      }
+
+      async function loadRemainingFrames(startIdx) {
+        for (let i = startIdx; i < FRAME_COUNT; i += BG_BATCH_SIZE) {
+          const batchEnd = Math.min(i + BG_BATCH_SIZE, FRAME_COUNT);
+          const batch = [];
+          for (let j = i; j < batchEnd; j++) {
+            batch.push(loadFrame(j).then(() => { totalLoaded++; }));
+          }
+          await Promise.all(batch);
+
+          // Small delay so we don't starve the main thread
+          await new Promise(r => setTimeout(r, BG_BATCH_DELAY));
+        }
+        allDone = true;
+      }
+
+      // ───────── NEAREST-LOADED FRAME LOOKUP ─────────
+      // If the exact frame isn't loaded yet, find the closest one that is
+      function nearestLoadedFrame(idx) {
         if (idx < 0) idx = 0;
-        if (idx >= LOADED_FRAME_COUNT) idx = LOADED_FRAME_COUNT - 1;
-        const img = images[idx];
-        if (!img || !img.naturalWidth) return;
+        if (idx >= FRAME_COUNT) idx = FRAME_COUNT - 1;
+        if (frameReady[idx]) return idx;
+
+        // Search outward in both directions
+        for (let d = 1; d < FRAME_COUNT; d++) {
+          if (idx - d >= 0 && frameReady[idx - d]) return idx - d;
+          if (idx + d < FRAME_COUNT && frameReady[idx + d]) return idx + d;
+        }
+        return -1; // nothing loaded yet
+      }
+
+      // ───────── COVER-FIT DRAW ─────────
+      // Pre-computed cover-fit values (updated on resize)
+      let coverCache = { cw: 0, ch: 0, iw: 0, ih: 0, sx: 0, sy: 0, sw: 0, sh: 0 };
+
+      function computeCover(cw, ch, iw, ih) {
+        const cr = cw / ch;
+        const ir = iw / ih;
+        if (ir > cr) {
+          coverCache.sh = ih;
+          coverCache.sw = ih * cr;
+          coverCache.sx = (iw - coverCache.sw) / 2;
+          coverCache.sy = 0;
+        } else {
+          coverCache.sw = iw;
+          coverCache.sh = iw / cr;
+          coverCache.sx = 0;
+          coverCache.sy = (ih - coverCache.sh) / 2;
+        }
+        coverCache.cw = cw;
+        coverCache.ch = ch;
+        coverCache.iw = iw;
+        coverCache.ih = ih;
+      }
+
+      let lastDrawnIdx = -1;
+
+      function drawFrame(idx) {
+        const slot = nearestLoadedFrame(idx);
+        if (slot < 0) return;
+
+        // Skip redundant draws
+        if (slot === lastDrawnIdx) return;
+        lastDrawnIdx = slot;
+
+        const src = frames[slot];
+        if (!src) return;
 
         const cw = canvas.width;
         const ch = canvas.height;
-        const iw = img.naturalWidth;
-        const ih = img.naturalHeight;
+        const iw = src.width || src.naturalWidth;
+        const ih = src.height || src.naturalHeight;
+        if (!iw || !ih) return;
 
-        // Calculate cover-fit (like CSS object-fit: cover)
-        const canvasRatio = cw / ch;
-        const imgRatio = iw / ih;
-        let sx, sy, sw, sh;
-
-        if (imgRatio > canvasRatio) {
-          // Image is wider — crop sides
-          sh = ih;
-          sw = ih * canvasRatio;
-          sx = (iw - sw) / 2;
-          sy = 0;
-        } else {
-          // Image is taller — crop top/bottom
-          sw = iw;
-          sh = iw / canvasRatio;
-          sx = 0;
-          sy = (ih - sh) / 2;
+        // Recompute cover-fit only when dimensions change
+        if (cw !== coverCache.cw || ch !== coverCache.ch || iw !== coverCache.iw || ih !== coverCache.ih) {
+          computeCover(cw, ch, iw, ih);
         }
 
-        ctx.clearRect(0, 0, cw, ch);
-        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, cw, ch);
+        ctx.drawImage(src, coverCache.sx, coverCache.sy, coverCache.sw, coverCache.sh, 0, 0, cw, ch);
       }
 
-      // Scroll handler — maps scroll position to frame index
+      // ───────── SCROLL HANDLER ─────────
       let currentFrame = 0;
       let ticking = false;
 
       function onScroll() {
-        if (!allLoaded) return;
+        if (!criticalDone) return;
         if (!ticking) {
           requestAnimationFrame(updateFrame);
           ticking = true;
@@ -748,14 +862,11 @@
 
         // Manage fixed/absolute positioning (simulating sticky)
         if (rect.top > 0) {
-          // Section hasn't reached the top yet — stay at top of section
           canvasWrap.classList.remove('is-fixed', 'is-bottom');
         } else if (sectionTop >= scrollRange) {
-          // Scrolled past the section — anchor to bottom
           canvasWrap.classList.remove('is-fixed');
           canvasWrap.classList.add('is-bottom');
         } else {
-          // In the scroll range — fix to viewport
           canvasWrap.classList.add('is-fixed');
           canvasWrap.classList.remove('is-bottom');
         }
@@ -763,7 +874,7 @@
         let progress = sectionTop / scrollRange;
         progress = Math.max(0, Math.min(1, progress));
 
-        const frameIdx = Math.round(progress * (LOADED_FRAME_COUNT - 1));
+        const frameIdx = Math.round(progress * (FRAME_COUNT - 1));
 
         // Update progress bar
         progressBar.style.width = (progress * 100) + '%';
@@ -788,25 +899,32 @@
         }
       }
 
-      // Size canvas to fill viewport
-      function resizeCanvas() {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-        drawFrame(currentFrame);
+      // ───────── DEBOUNCED RESIZE ─────────
+      let resizeTimer = null;
+
+      function onResize() {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function() {
+          canvas.width = window.innerWidth;
+          canvas.height = window.innerHeight;
+          lastDrawnIdx = -1; // force redraw
+          drawFrame(currentFrame);
+        }, RESIZE_DEBOUNCE_MS);
       }
 
-      // Initialize
+      // ───────── INITIALIZATION ─────────
       window.addEventListener('scroll', onScroll, { passive: true });
-      window.addEventListener('resize', resizeCanvas);
+      window.addEventListener('resize', onResize, { passive: true });
 
-      // Set initial canvas size before loading
+      // Set initial canvas size
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
 
       // Trigger initial position check
       updateFrame();
 
-      preloadFrames();
+      // Begin progressive loading
+      startLoading();
     })();
     </script>
   </body>
