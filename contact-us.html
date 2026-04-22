@@ -303,8 +303,27 @@
           </div>
         </div>
 
+        <!-- Franchise Banner Section -->
+        <div class="auto-container" style="margin-bottom: 50px;">
+          <div class="c-page-form-box" style="background: url('images/bg-4.png') center/cover no-repeat; text-align: center; padding: 60px 30px; border-radius: 10px; position: relative;">
+            <div class="title-box centered" style="margin-bottom: 30px;">
+              <h2 style="color: var(--white-color);">Explore Franchise Opportunities</h2>
+              <div class="text desc" style="color: var(--white-color);">
+                Join the Vyankateshwara Family! We are expanding and looking for passionate franchise partners. 
+                Interested in opening your own Vyankateshwara Cafe? 
+              </div>
+            </div>
+            <a href="#whatsapp-form" class="theme-btn btn-style-two clearfix" style="display: inline-block;">
+              <span class="btn-wrap">
+                <span class="text-one">Apply for Franchise</span>
+                <span class="text-two">Apply for Franchise</span>
+              </span>
+            </a>
+          </div>
+        </div>
+
         <!--Location form Section-->
-        <div class="auto-container">
+        <div id="contact-form-section" class="auto-container">
           <div class="c-page-form-box">
             <div class="row clearfix">
               <!--form Section-->
@@ -350,6 +369,18 @@
                             placeholder="Phone Number"
                             required=""
                           />
+                        </div>
+                      </div>
+
+                      <div class="form-group">
+                        <div class="field-inner">
+                          <select name="inquiry_type" required="" style="width: 100%; height: 50px; padding: 10px 20px; background: transparent; border: 1px solid rgba(255, 255, 255, 0.1); color: var(--white-color); font-size: 15px; outline: none; transition: all 300ms ease; margin-bottom: 20px;">
+                            <option value="" disabled selected style="color: #000;">Select Inquiry Type...</option>
+                            <option value="General Inquiry" style="color: #000;">General Inquiry</option>
+                            <option value="Table Reservation" style="color: #000;">Table Reservation</option>
+                            <option value="Franchise Application" style="color: #000;">Franchise Application</option>
+                            <option value="Feedback" style="color: #000;">Feedback</option>
+                          </select>
                         </div>
                       </div>
 
@@ -555,9 +586,10 @@
         const email = this.querySelector('[name="email"]').value;
         const phone = this.querySelector('[name="phone"]').value;
         const message = this.querySelector('[name="message"]').value;
+        const inquiryType = this.querySelector('[name="inquiry_type"]').value;
         
         // Construct the WhatsApp message
-        const whatsappMessage = `*New Contact Request*%0A%0A` +
+        const whatsappMessage = `*New Contact Request: ${encodeURIComponent(inquiryType)}*%0A%0A` +
                                 `*Name:* ${encodeURIComponent(name)}%0A` +
                                 `*Email:* ${encodeURIComponent(email)}%0A` +
                                 `*Phone:* ${encodeURIComponent(phone)}%0A` +
