@@ -5215,6 +5215,53 @@ video,
   transition: all 400ms ease;
 }
 
+/* Google Reviews Custom Styling */
+.google-rating-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-color, rgba(200, 150, 92, 0.3));
+  padding: 8px 18px;
+  border-radius: 30px;
+  margin-top: 15px;
+  margin-bottom: 25px;
+  font-size: 14px;
+}
+.google-rating-badge img {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+}
+.google-rating-badge .stars {
+  color: #f4b400;
+  font-size: 13px;
+  letter-spacing: 2px;
+}
+.google-rating-badge .rating-text {
+  color: var(--color-one, #e0dbd5);
+  font-weight: 500;
+}
+.google-rating-badge a {
+  color: var(--main-color, #c8965c);
+  text-decoration: underline;
+  margin-left: 4px;
+}
+.google-verified-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: #999;
+  margin-top: 5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.google-verified-tag svg {
+  width: 12px;
+  height: 12px;
+}
+
 .testimonials-two .owl-theme .owl-nav .owl-next {
   right: 15px;
 }
