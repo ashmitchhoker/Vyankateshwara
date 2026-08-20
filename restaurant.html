@@ -742,20 +742,29 @@
       async function loadFrame(slotIndex) {
         const url = getFramePath(frameIndices[slotIndex]);
         try {
-          const response = await fetchWithCache(url);
-          const blob = await response.blob();
-
           let frame;
-          // Only use ImageBitmap on Desktop (more stable)
-          if (!isMobile && typeof createImageBitmap === 'function') {
-            frame = await createImageBitmap(blob);
-          } else {
+          try {
+            const response = await fetchWithCache(url);
+            const blob = await response.blob();
+            if (!isMobile && typeof createImageBitmap === 'function') {
+              frame = await createImageBitmap(blob);
+            } else {
+              const img = new Image();
+              const loaded = new Promise((res, rej) => {
+                img.onload = res;
+                img.onerror = rej;
+              });
+              img.src = URL.createObjectURL(blob);
+              await loaded;
+              frame = img;
+            }
+          } catch (corsErr) {
             const img = new Image();
             const loaded = new Promise((res, rej) => {
               img.onload = res;
               img.onerror = rej;
             });
-            img.src = URL.createObjectURL(blob);
+            img.src = url;
             await loaded;
             frame = img;
           }
